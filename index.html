@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Приглашение 💌</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    font-family:system-ui,sans-serif;background:linear-gradient(135deg,#ffe3ec,#ffd1dc,#e8d5ff);color:#4a2c3a}
+  .card{background:#fff;max-width:480px;width:92%;padding:32px 24px;border-radius:24px;
+    box-shadow:0 10px 40px rgba(0,0,0,.12);text-align:center}
+  h1{margin-top:0}
+  button{font-size:18px;padding:12px 26px;border:none;border-radius:999px;cursor:pointer;margin:6px;font-family:inherit}
+  .yes{background:#ff4d80;color:#fff}
+  .no{background:#ddd;color:#333;transition:left .25s ease, top .25s ease;z-index:10}
+  .hidden{display:none}
+  .options{display:grid;gap:10px;margin:16px 0}
+  .opt{padding:14px;border:2px solid #ffc2d4;border-radius:14px;cursor:pointer;background:#fff;font-size:16px}
+  .opt.sel{background:#ff4d80;color:#fff;border-color:#ff4d80}
+  .times{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 18px}
+  .times .opt{padding:12px 0}
+  .date{font-size:22px;background:#fff0f5;border:2px dashed #ff4d80;border-radius:14px;padding:16px;margin:16px 0}
+</style>
+</head>
+<body>
+<div class="card">
+
+  <!-- Шаг 1 -->
+  <div id="step1">
+    <h1>Пойдёшь со мной на свидание? 💕</h1>
+    <p>Я кое-что придумал... только скажи «да» 😊</p>
+    <button class="yes" onclick="sayYes()">Да!</button>
+    <button class="no" id="noBtn">Нет</button>
+  </div>
+
+  <!-- Шаг 2 -->
+  <div id="step2" class="hidden">
+    <h1>Куда пойдём? 🗺️</h1>
+    <div class="options" id="places"></div>
+    <button class="yes" onclick="go(3)">Дальше</button>
+  </div>
+
+  <!-- Шаг 3 -->
+  <div id="step3" class="hidden">
+    <h1>Наше свидание 🗓️</h1>
+    <div class="date">7 ноября 2026</div>
+    <p>Во сколько тебе удобно? 🕒</p>
+    <div class="times" id="times"></div>
+    <p>Ты точно согласна?</p>
+    <button class="yes" onclick="finish()">Да, точно! 💖</button>
+  </div>
+
+  <!-- Финал -->
+  <div id="step4" class="hidden">
+    <h1>Ура! 🎉</h1>
+    <p>Я всё получил. До встречи 7 ноября в <b id="finalTime"></b>! 💌</p>
+  </div>
+</div>
+
+<script>
+  // ====== НАСТРОЙКИ ======
+  const BOT_TOKEN = "9274131123:AAEq-HgO97AdAWIc3LTcv8tm_KMeUMoiFlw";
+  const CHAT_ID   = "1280251055";
+  const DATE_TEXT = "07.11.2026";
+  const PLACES = [
+    "🎬 Кино",
+    "☕ Кофейня и прогулка",
+    "🍝 Ужин в ресторане",
+    "🎭 Театр",
+    "🎡 Парк аттракционов"
+  ];
+  const TIME_FROM = 17 * 60;  // 17:00
+  const TIME_TO   = 20 * 60;  // 20:00
+  const TIME_STEP = 30;       // шаг в минутах (поставь 60, чтобы было 17:00, 18:00, 19:00, 20:00)
+  // =======================
+
+  function notify(text){
+    fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({chat_id:CHAT_ID,text})
+    }).catch(()=>{});
+  }
+
+  // Уведомление: открыла страницу (можно удалить строку)
+  notify("👀 Она открыла страницу с приглашением");
+
+  // Универсальный выбор одного варианта из списка
+  function buildOptions(container, items, onPick){
+    items.forEach(item=>{
+      const d = document.createElement("div");
+      d.className = "opt"; d.textContent = item;
+      d.onclick = ()=>{
+        container.querySelectorAll(".opt").forEach(o=>o.classList.remove("sel"));
+        d.classList.add("sel");
+        onPick(item);
+      };
+      container.appendChild(d);
+    });
+  }
+
+  let chosenPlace = null;
+  let chosenTime = null;
+
+  buildOptions(document.getElementById("places"), PLACES, p => chosenPlace = p);
+
+  const times = [];
+  for (let m = TIME_FROM; m <= TIME_TO; m += TIME_STEP){
+    const hh = String(Math.floor(m/60)).padStart(2,"0");
+    const mm = String(m%60).padStart(2,"0");
+    times.push(`${hh}:${mm}`);
+  }
+  buildOptions(document.getElementById("times"), times, t => chosenTime = t);
+
+  function go(n){
+    if(n===3 && !chosenPlace){ alert("Выбери вариант 🙂"); return; }
+    document.querySelectorAll("[id^=step]").forEach(s=>s.classList.add("hidden"));
+    document.getElementById("step"+n).classList.remove("hidden");
+  }
+
+  function sayYes(){
+    notify("💖 Она нажала «Да!»");  // можно удалить
+    go(2);
+  }
+
+  function finish(){
+    if(!chosenTime){ alert("Выбери время 🕒"); return; }
+    notify(`🎉 Она согласилась!\nМесто: ${chosenPlace}\nДата: ${DATE_TEXT}\nВремя: ${chosenTime}`);
+    document.getElementById("finalTime").textContent = chosenTime;
+    go(4);
+  }
+
+  // ===== Убегающая кнопка «Нет» =====
+  const noBtn = document.getElementById("noBtn");
+  let lastX = -999, lastY = -999;
+
+  function moveAway(px, py){
+    const w = noBtn.offsetWidth, h = noBtn.offsetHeight;
+    const maxX = innerWidth - w - 10, maxY = innerHeight - h - 10;
+    let x, y, tries = 0;
+    do {
+      x = 10 + Math.random()*maxX;
+      y = 10 + Math.random()*maxY;
+      tries++;
+    } while (tries < 30 && Math.hypot(x + w/2 - px, y + h/2 - py) < 250);
+    noBtn.style.position = "fixed";
+    noBtn.style.left = x + "px";
+    noBtn.style.top  = y + "px";
+  }
+
+  // Убегает, когда курсор приближается
+  document.addEventListener("pointermove", e=>{
+    lastX = e.clientX; lastY = e.clientY;
+    const r = noBtn.getBoundingClientRect();
+    const d = Math.hypot(e.clientX-(r.left+r.width/2), e.clientY-(r.top+r.height/2));
+    if (d < 110 && !document.getElementById("step1").classList.contains("hidden")) {
+      moveAway(e.clientX, e.clientY);
+    }
+  });
+
+  // Телефон: убегает при касании
+  ["pointerdown","touchstart","click"].forEach(ev=>{
+    noBtn.addEventListener(ev, e=>{
+      e.preventDefault();
+      moveAway(e.clientX ?? lastX, e.clientY ?? lastY);
+    }, {passive:false});
+  });
+</script>
+</body>
+</html>
